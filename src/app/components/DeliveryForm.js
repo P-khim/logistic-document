@@ -133,7 +133,7 @@ const handleQuantityChange = (e) => {
     try {
       // Add new delivery note to Firestore
       await addDoc(collection(db, "deliveryNotes"), newDeliveryNote);
-      alert("Delivery note saved successfully!");
+      alert("ជោគជ័យ!");
 
       // Add the new note to the local state to accumulate the data
       setDeliveryNotes((prevNotes) => [...prevNotes, newDeliveryNote]);
@@ -149,7 +149,7 @@ const handleQuantityChange = (e) => {
       setRate(0);
       setTotal(0);
     } catch (error) {
-      console.error("Error adding document: ", error);
+      console.error("ព្យាយាមម្តងទៀត ", error);
     }
   };
 
