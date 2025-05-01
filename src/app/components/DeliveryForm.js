@@ -12,7 +12,7 @@ const provinces = [
   "Kompong Speu", "Siem Reap", "Battambang", "Kompong Cham", 
   "Prey Veng", "Kompong Thom", "Kompong Chnang", "Banteaymeanchey", 
   "Rathanakiri", "Preah Vihear", "Kompong Som", "Svay Rieng", 
-  "Kompot", "Tbong Khmum", "Takeo", "Phnom Penh"
+  "Kompot", "Tbong Khmum", "Takeo", "Kratie"
 ];
 
 // Truck number to phone number mapping
@@ -88,6 +88,8 @@ const DeliveryForm = () => {
       newRate = 0.23; 
     } else if (selectedProvince === "Takeo") {
       newRate = 0.20; 
+    } else if (selectedProvince === "Kratie") {
+      newRate = 0.45; 
     }
     setRate(newRate);
     setTotal(quantity * newRate); // Automatically update total
