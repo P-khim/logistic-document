@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
-// components/DeliveryForm.js
 import { useState, useEffect } from "react";
 import { getFirestore, collection, addDoc, getDocs } from "firebase/firestore";
-import { app } from "../../../Firebase"; // Import Firebase app
-import * as XLSX from "xlsx"; // Import xlsx library for exporting Excel files
+import { app } from "../../../Firebase";
+import * as XLSX from "xlsx";
 
-const db = getFirestore(app); // Initialize Firestore
+const db = getFirestore(app);
 
 const provinces = [
-  "Kompong Speu", "Siem Reap", "Battambang", "Kompong Cham", 
-  "Prey Veng", "Kompong Thom", "Kompong Chnang", "Banteaymeanchey", 
-  "Rathanakiri", "Preah Vihear", "Kompong Som", "Svay Rieng", 
+  "Kompong Speu", "Siem Reap", "Battambang", "Kompong Cham",
+  "Prey Veng", "Kompong Thom", "Kompong Chnang", "Banteaymeanchey",
+  "Rathanakiri", "Preah Vihear", "Kompong Som", "Svay Rieng",
   "Kompot", "Tbong Khmum", "Takeo", "Kratie"
 ];
 
-// Truck number to phone number mapping
+const companies = ["TSNR", "ROYAL", "CK"];
+
 const truckToPhoneMapping = {
   "1170": "016551170",
   "9987": "015654894",
@@ -29,95 +29,77 @@ const truckToPhoneMapping = {
 const DeliveryForm = () => {
   const [province, setProvince] = useState("");
   const [deliveryDate, setDeliveryDate] = useState("");
-  const [truckNumber, setTruckNumber] = useState(""); // Initially no truck number selected
-  const [name, setName] = useState("Mr. Rathana"); // Default name
-  const [phone, setPhone] = useState(""); // Automatically set phone based on truck number
-  const [invoice, setInvoice] = useState(""); // Invoice number
-  const [quantity, setQuantity] = useState(""); // Quantity input
-  const [rate, setRate] = useState(0); // Rate based on province
-  const [total, setTotal] = useState(0); // Calculated total (quantity * rate)
-  
-  // Array to hold all delivery notes (persisted in Firestore)
+  const [truckNumber, setTruckNumber] = useState("");
+  const [name, setName] = useState("Mr. Rathana");
+  const [phone, setPhone] = useState("");
+  const [invoice, setInvoice] = useState("");
+  const [quantity, setQuantity] = useState("");
+  const [rate, setRate] = useState(0);
+  const [total, setTotal] = useState(0);
   const [deliveryNotes, setDeliveryNotes] = useState([]);
+  const [company, setCompany] = useState("");
 
   useEffect(() => {
-    // Fetch all delivery notes from Firestore on component mount
     const fetchDeliveryNotes = async () => {
-      const querySnapshot = await getDocs(collection(db, "deliveryNotes"));
+      if (!company) return;
+      const collectionName = `deliveryNotes_${company.toLowerCase()}`;
+      const querySnapshot = await getDocs(collection(db, collectionName));
       const notes = querySnapshot.docs.map((doc) => doc.data());
       setDeliveryNotes(notes);
     };
 
     fetchDeliveryNotes();
-  }, []);
+  }, [company]);
 
-  // Set rate and total based on province selection
   const handleProvinceChange = (e) => {
     const selectedProvince = e.target.value;
     setProvince(selectedProvince);
 
-    // Example: Set rate based on selected province
     let newRate = 0;
-    if (selectedProvince === "Kompong Speu") {
-      newRate = 0.18; 
-    } else if (selectedProvince === "Siem Reap") {
-      newRate = 0.38;
-    } else if (selectedProvince === "Battambang") {
-      newRate = 0.38; 
-    } else if (selectedProvince === "Kompong Cham") {
-      newRate = 0.22; 
-    } else if (selectedProvince === "Prey Veng") {
-      newRate = 0.20; 
-    } else if (selectedProvince === "Kompong Thom") {
-      newRate = 0.25; 
-    } else if (selectedProvince === "Kompong Chnang") {
-      newRate = 0.25; 
-    } else if (selectedProvince === "Banteaymeanchey") {
-      newRate = 0.43; 
-    } else if (selectedProvince === "Rathanakiri") {
-      newRate = 0.75; 
-    } else if (selectedProvince === "Preah Vihear") {
-      newRate = 0.45; 
-    } else if (selectedProvince === "Kompong Som") {
-      newRate = 0.35; 
-    } else if (selectedProvince === "Svay Rieng") {
-      newRate = 0.25; 
-    } else if (selectedProvince === "Kompot") {
-      newRate = 0.25; 
-    } else if (selectedProvince === "Tbong Khmum") {
-      newRate = 0.23; 
-    } else if (selectedProvince === "Takeo") {
-      newRate = 0.20; 
-    } else if (selectedProvince === "Kratie") {
-      newRate = 0.45; 
-    }
+    const rateTable = {
+      "Kompong Speu": 0.18,
+      "Siem Reap": 0.38,
+      "Battambang": 0.38,
+      "Kompong Cham": 0.22,
+      "Prey Veng": 0.20,
+      "Kompong Thom": 0.25,
+      "Kompong Chnang": 0.25,
+      "Banteaymeanchey": 0.43,
+      "Rathanakiri": 0.75,
+      "Preah Vihear": 0.45,
+      "Kompong Som": 0.35,
+      "Svay Rieng": 0.25,
+      "Kompot": 0.25,
+      "Tbong Khmum": 0.23,
+      "Takeo": 0.20,
+      "Kratie": 0.45,
+    };
+
+    newRate = rateTable[selectedProvince] || 0;
     setRate(newRate);
-    setTotal(quantity * newRate); // Automatically update total
+    setTotal(quantity * newRate);
   };
 
-  // Automatically set total when quantity or rate changes
- // Automatically set total when quantity or rate changes
-const handleQuantityChange = (e) => {
-  let value = e.target.value;
-  // Remove leading zeros for quantity
-  value = value.replace(/^0+/, "");
-  setQuantity(value);
+  const handleQuantityChange = (e) => {
+    let value = e.target.value.replace(/^0+/, "");
+    setQuantity(value);
+    const calculatedTotal = (value * rate).toFixed(2);
+    setTotal(calculatedTotal);
+  };
 
-  // Round the total (quantity * rate) to two decimal places
-  const calculatedTotal = (value * rate).toFixed(2); // Round to 2 decimal places
-  setTotal(calculatedTotal); // Update the total
-};
-
-
-  // Function to generate phone number based on truck number
   const handleTruckNumberChange = (e) => {
     const selectedTruckNumber = e.target.value;
     setTruckNumber(selectedTruckNumber);
-    setPhone(truckToPhoneMapping[selectedTruckNumber] || ""); // Set phone based on truck number mapping
+    setPhone(truckToPhoneMapping[selectedTruckNumber] || "");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    if (!company) {
+      alert("សូមជ្រើសរើសក្រុមហ៊ុន");
+      return;
+    }
 
     const newDeliveryNote = {
       truckNumber,
@@ -133,14 +115,11 @@ const handleQuantityChange = (e) => {
     };
 
     try {
-      // Add new delivery note to Firestore
-      await addDoc(collection(db, "deliveryNotes"), newDeliveryNote);
+      const collectionName = `deliveryNotes_${company.toLowerCase()}`;
+      await addDoc(collection(db, collectionName), newDeliveryNote);
       alert("ជោគជ័យ!");
-
-      // Add the new note to the local state to accumulate the data
       setDeliveryNotes((prevNotes) => [...prevNotes, newDeliveryNote]);
 
-      // Reset form after successful submission
       setTruckNumber("");
       setProvince("");
       setDeliveryDate("");
@@ -155,7 +134,6 @@ const handleQuantityChange = (e) => {
     }
   };
 
-  // Function to format date in dd-mmm-yyyy format
   const formatDate = (dateStr) => {
     if (!dateStr) return "";
     const date = new Date(dateStr);
@@ -163,17 +141,37 @@ const handleQuantityChange = (e) => {
     return new Intl.DateTimeFormat('en-GB', options).format(date);
   };
 
-  // Function to export all collected data to Excel
-  const exportToExcel = () => {
-    // Create an array for the header row
-    const header = ["Province", "Delivery Date", "Truck Number", "Name", "Phone", "Invoice", "Quantity", "Rate", "Total"];
+  const exportSelectedCompanyToExcel = async () => {
+    if (!company) {
+      alert("សូមជ្រើសរើសក្រុមហ៊ុន");
+      return;
+    }
 
-    // Prepare data for Excel export
-    const data = deliveryNotes
-      .sort((a, b) => a.province.localeCompare(b.province)) // Sort by province
-      .map((note) => [
+    const collectionName = `deliveryNotes_${company.toLowerCase()}`;
+    try {
+      const querySnapshot = await getDocs(collection(db, collectionName));
+      const notes = querySnapshot.docs.map((doc) => doc.data());
+
+      if (notes.length === 0) {
+        alert("គ្មានទិន្នន័យសម្រាប់ក្រុមហ៊ុននេះទេ។");
+        return;
+      }
+
+      const header = [
+        "Province",
+        "Delivery Date",
+        "Truck Number",
+        "Name",
+        "Phone",
+        "Invoice",
+        "Quantity",
+        "Rate",
+        "Total",
+      ];
+
+      const data = notes.map((note) => [
         note.province,
-        formatDate(note.deliveryDate), // Format the delivery date
+        formatDate(note.deliveryDate),
         note.truckNumber,
         note.name,
         note.phone,
@@ -183,95 +181,55 @@ const handleQuantityChange = (e) => {
         note.total,
       ]);
 
-    // Add header to data
-    const exportData = [header, ...data];
+      const exportData = [header, ...data];
+      const ws = XLSX.utils.aoa_to_sheet(exportData);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, `${company} Delivery Notes`);
+      XLSX.writeFile(wb, `${company.toLowerCase()}_delivery_notes.xlsx`);
 
-    // Create and download Excel file
-    const ws = XLSX.utils.aoa_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Delivery Notes");
-    XLSX.writeFile(wb, "delivery_notes.xlsx");
+      alert(`បានបង្ហោះ Excel សម្រាប់ ${company} ជោគជ័យ`);
+    } catch (error) {
+      console.error("បញ្ហា​ក្នុងការបង្ហោះ Excel:", error);
+      alert("បង្ហោះបរាជ័យ សូមព្យាយាមម្ដងទៀត");
+    }
   };
 
   return (
     <div className="form-container">
       <h2>Delivery Note Input</h2>
       <form onSubmit={handleSubmit}>
+        <select value={company} onChange={(e) => setCompany(e.target.value)} required>
+          <option value="">ជ្រើសរើសក្រុមហ៊ុន</option>
+          {companies.map((c, i) => (
+            <option key={i} value={c}>{c}</option>
+          ))}
+        </select>
+
         <select value={province} onChange={handleProvinceChange} required>
           <option value="">ខេត្ត</option>
           {provinces.map((province, index) => (
-            <option key={index} value={province}>
-              {province}
-            </option>
+            <option key={index} value={province}>{province}</option>
           ))}
         </select>
 
-        <input
-          type="date"
-          placeholder="Delivery Date"
-          value={deliveryDate}
-          onChange={(e) => setDeliveryDate(e.target.value)}
-          required
-        />
-
+        <input type="date" value={deliveryDate} onChange={(e) => setDeliveryDate(e.target.value)} required />
         <select value={truckNumber} onChange={handleTruckNumberChange} required>
           <option value="">លេខឡាន</option>
           {Object.keys(truckToPhoneMapping).map((truckNumber, index) => (
-            <option key={index} value={truckNumber}>
-              {truckNumber}
-            </option>
+            <option key={index} value={truckNumber}>{truckNumber}</option>
           ))}
         </select>
 
-        <input
-          type="text"
-          placeholder="Name"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          required
-        />
-
-        <input
-          type="text"
-          placeholder="Phone"
-          value={phone}
-          readOnly
-        />
-
-        <input
-          type="text"
-          placeholder="លេខ Dn"
-          value={invoice}
-          onChange={(e) => setInvoice(e.target.value)}
-          required
-        />
-
-        <input
-          type="number"
-          placeholder="ចំនួន"
-          value={quantity}
-          onChange={handleQuantityChange}
-          required
-        />
-
-        <input
-          type="number"
-          placeholder="Rate"
-          value={rate}
-          readOnly
-        />
-
-        <input
-          type="number"
-          placeholder="Total"
-          value={total}
-          readOnly
-        />
-
+        <input type="text" placeholder="Name" value={name} onChange={(e) => setName(e.target.value)} required />
+        <input type="text" placeholder="Phone" value={phone} readOnly />
+        <input type="text" placeholder="លេខ Dn" value={invoice} onChange={(e) => setInvoice(e.target.value)} required />
+        <input type="number" placeholder="ចំនួន" value={quantity} onChange={handleQuantityChange} required />
+        <input type="number" placeholder="Rate" value={rate} readOnly />
+        <input type="number" placeholder="Total" value={total} readOnly />
         <button type="submit">Save</button>
       </form>
 
-      <button onClick={exportToExcel} >Export to Excel</button>
+      <button onClick={exportSelectedCompanyToExcel}>Export to Excel</button>
     </div>
   );
 };
